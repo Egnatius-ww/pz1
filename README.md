@@ -51,3 +51,11 @@ ClickHouse + Metabase из папки `E:\olap\Стенд`:
 1. Топ категорий по выручке.
 2. Динамика продаж по месяцам.
 3. Средний чек по магазинам.
+
+## Загрузка данных в DuckDB (З03)
+
+Требования: Python 3.10+, пакет `duckdb`.
+
+```bash
+py -m pip install duckdb
+py scripts/load_duckdb.py

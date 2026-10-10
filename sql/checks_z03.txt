@@ -1,0 +1,19 @@
+=== SHOW TABLES ===
+  dim_date
+  dim_product
+  dim_store
+  fact_sales
+
+=== Counts ===
+  fact_sales: 15
+  dim_store: 5
+  dim_product: 8
+  dim_date: 8
+
+=== Sum(amount) ===
+  Оборот: 264.00
+
+=== Orphan FK (anti-join) ===
+  fact_sales-сироты: 0
+
+OK → E:\olap\pz1\data\retail.duckdb
