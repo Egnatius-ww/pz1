@@ -1,0 +1,32 @@
+=== DDL ===
+  ok
+
+=== Очистка таблиц ===
+  cleaned fact_sales
+  cleaned dim_store
+  cleaned dim_product
+  cleaned dim_date
+
+=== Загрузка ===
+  dim_store...
+  dim_product...
+  dim_date...
+  fact_sales...
+
+=== Проверки качества ===
+  ✓ fact_sales: пустых ключей/сумм = 0
+  ✓ fact_sales: отрицательных qty/amount = 0
+  ✓ dim_date: дат раньше 2000 = 0
+  ✓ fact_sales: дублей sale_id = 0
+  ✓ fact_sales: сирот FK = 0
+
+=== Counts ===
+  fact_sales: 15
+  dim_store: 5
+  dim_product: 8
+  dim_date: 8
+
+=== Sum(amount) ===
+  Оборот: 264.00
+
+✓ Загрузка успешна → E:\olap\pz1\data\retail.duckdb
