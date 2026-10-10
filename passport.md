@@ -48,18 +48,10 @@
 
 7. Эталонный SQL одной метрики (черновик → уточнить на P04)
 
-```sql
--- Оборот по регионам за январь 2024
-SELECT
-    ds.region,
-    SUM(fs.amount) AS revenue
-FROM fact_sales fs
-JOIN dim_store ds ON fs.store_id = ds.store_id
-JOIN dim_date  dd ON fs.date_id  = dd.date_id
-WHERE dd.year = 2024 AND dd.month = 1
-GROUP BY ds.region
-ORDER BY revenue DESC;
-```
+SELECT SUM(amount) AS revenue
+FROM fact_sales;
+
+**Эталонное число:** 264.00
 
 
 8. Риски / cut
