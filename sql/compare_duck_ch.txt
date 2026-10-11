@@ -1,0 +1,13 @@
+=== DuckDB vs ClickHouse ===
+
+count(fact_sales)
+  DuckDB:     15
+  ClickHouse: 15
+  ✓
+
+sum(amount)
+  DuckDB:     264.00
+  ClickHouse: 264
+  ✓
+
+✓ Все проверки пройдены — числа совпадают
