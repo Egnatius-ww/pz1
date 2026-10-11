@@ -72,3 +72,22 @@ py etl/load.py
 ```bash
 py -m pip install clickhouse-connect
 py etl/load_ch.py
+
+## З08: запросы и ключи в ClickHouse
+
+**Скрипт:** `scripts/run_p08.py` — прогон `queries/p08_ch.sql`.
+**Результат:** `sql/p08_output.txt`.
+
+### Ключ сортировки
+
+`ORDER BY` в MergeTree — **не PRIMARY KEY**, а порядок хранения
+строк на диске. Уникальность не гарантируется; идемпотентность —
+через `TRUNCATE` перед загрузкой.
+
+В `fact_sales` — `(date_id, store_id, product_id, sale_id)`:
+`date_id` первым, потому что большинство отчётов фильтруют период.
+
+### Партиционирование
+
+Партиций **нет** — данные учебного sample малы (15 строк).
+Обоснование отказа — в `cut.md`.
