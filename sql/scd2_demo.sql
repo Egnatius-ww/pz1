@@ -63,3 +63,21 @@ JOIN dim_product dp ON fs.product_id = dp.product_id
                                         AND COALESCE(dp.valid_to, DATE '9999-12-31')
 WHERE fs.product_id = 101
 ORDER BY dd.full_date;
+
+-- ============================================================
+-- 5. Тест: исторический срез (январь) не меняется после SCD2-обновления
+-- Отчёт: оборот по категориям за январь 2024
+-- Должен показать "Молочка", а не "Молочные продукты"
+-- ============================================================
+SELECT
+    dp.category AS category_at_sale_date,
+    SUM(fs.amount) AS revenue
+FROM fact_sales fs
+JOIN dim_date    dd ON fs.date_id    = dd.date_id
+JOIN dim_product dp ON fs.product_id = dp.product_id
+                   AND dd.full_date BETWEEN dp.valid_from
+                                        AND COALESCE(dp.valid_to, DATE '9999-12-31')
+WHERE dd.year = 2024 AND dd.month = 1
+  AND dp.product_id = 101
+GROUP BY dp.category;
+
