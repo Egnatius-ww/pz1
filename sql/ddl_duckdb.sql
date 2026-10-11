@@ -10,12 +10,16 @@ CREATE TABLE IF NOT EXISTS dim_store (
     region      VARCHAR
 );
 
--- Справочник: товары (SCD2 — кандидат)
+-- Справочник: товары (SCD2 — храним историю версий)
 CREATE TABLE IF NOT EXISTS dim_product (
-    product_id    INTEGER PRIMARY KEY,
+    version_id    INTEGER PRIMARY KEY,          -- суррогатный ключ версии
+    product_id    INTEGER NOT NULL,             -- бизнес-ключ (НЕ PK!)
     product_name  VARCHAR NOT NULL,
     category      VARCHAR,
-    brand         VARCHAR
+    brand         VARCHAR,
+    valid_from    DATE NOT NULL,
+    valid_to      DATE,                         -- NULL = действует сейчас
+    is_current    BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- Справочник: календарь (статичный)
@@ -33,7 +37,7 @@ CREATE TABLE IF NOT EXISTS fact_sales (
     sale_id     INTEGER PRIMARY KEY,
     date_id     INTEGER NOT NULL REFERENCES dim_date(date_id),
     store_id    INTEGER NOT NULL REFERENCES dim_store(store_id),
-    product_id  INTEGER NOT NULL REFERENCES dim_product(product_id),
+    product_id  INTEGER NOT NULL,  
     qty         INTEGER NOT NULL,
     amount      DECIMAL(12,2) NOT NULL   -- деньги — DECIMAL, не FLOAT
 );

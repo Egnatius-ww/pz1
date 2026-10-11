@@ -34,9 +34,20 @@
 
 | Dim | Ключ | Важные атрибуты | SCD1 / SCD2 / нет |
 |-----|------|-----------------|-------------------|
-| dim_store   | store_id   | store_name, city, region                        | SCD1 (затираем) |
-| dim_product | product_id | product_name, category, brand                   | SCD2 (кандидат) |
-| dim_date | date_id       | full_date, year, month, month_name, day_of_week | нет (статичный) |
+| dim_store   | store_id   | store_name, city, region                                                                        | SCD1 (затираем) |
+| dim_product | version_id (PK), product_id (business key) | product_name, category, brand, valid_from, valid_to, is_current | **SCD2** (реализовано) |
+| dim_date    | date_id    | full_date, year, month, month_name, day_of_week                                                 | нет (статичный) |
+
+ SCD2 для dim_product
+
+Храним историю версий: при смене категории товара старая версия
+закрывается (`valid_to`, `is_current = FALSE`), создаётся новая
+(`valid_from`, `is_current = TRUE`).
+
+Факт присоединяется к версии по дате события:
+`fact_sales.date_id → dim_date.full_date BETWEEN dim_product.valid_from AND COALESCE(valid_to, '9999-12-31')`.
+
+
 
 
 6. Три бизнес-вопроса

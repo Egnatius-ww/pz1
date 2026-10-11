@@ -90,17 +90,43 @@ def cleanup(con: duckdb.DuckDBPyConnection) -> None:
         con.execute(f"DELETE FROM {t}")
 
 
-def load(con: duckdb.DuckDBPyConnection) -> None:
-    """Загрузка CSV: сначала справочники, потом факт."""
+def load(con):
+    """Загрузка CSV: dim → fact. dim_product — через staging + трансформация в SCD2."""
     print("\n=== Загрузка ===")
+
+    # --- dim_store: SCD1, как было ---
     print("  dim_store...")
-    con.execute(f"COPY dim_store   FROM '{RAW / 'dim_store.csv'}'   (HEADER, DELIMITER ',')")
-    print("  dim_product...")
-    con.execute(f"COPY dim_product FROM '{RAW / 'dim_product.csv'}' (HEADER, DELIMITER ',')")
+    con.execute(f"COPY dim_store FROM '{RAW / 'dim_store.csv'}' (HEADER, DELIMITER ',')")
+
+    # --- dim_product: SCD2 через staging ---
+    print("  dim_product (staging → SCD2)...")
+    con.execute(f"""
+        CREATE OR REPLACE TEMP TABLE stg_product AS
+        SELECT * FROM read_csv_auto('{RAW / 'dim_product.csv'}', header=true)
+    """)
+    con.execute("""
+        INSERT INTO dim_product
+            (version_id, product_id, product_name, category, brand,
+             valid_from, valid_to, is_current)
+        SELECT
+            row_number() OVER (ORDER BY product_id) AS version_id,
+            product_id,
+            product_name,
+            category,
+            brand,
+            DATE '2024-01-01' AS valid_from,
+            NULL              AS valid_to,
+            TRUE              AS is_current
+        FROM stg_product
+    """)
+
+    # --- dim_date: как было ---
     print("  dim_date...")
-    con.execute(f"COPY dim_date    FROM '{RAW / 'dim_date.csv'}'    (HEADER, DELIMITER ',')")
+    con.execute(f"COPY dim_date FROM '{RAW / 'dim_date.csv'}' (HEADER, DELIMITER ',')")
+
+    # --- fact_sales: как было ---
     print("  fact_sales...")
-    con.execute(f"COPY fact_sales  FROM '{RAW / 'fact_sales.csv'}'  (HEADER, DELIMITER ',')")
+    con.execute(f"COPY fact_sales FROM '{RAW / 'fact_sales.csv'}' (HEADER, DELIMITER ',')")
 
 
 def print_summary(con: duckdb.DuckDBPyConnection) -> None:
