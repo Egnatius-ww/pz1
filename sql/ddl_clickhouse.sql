@@ -50,7 +50,7 @@ ORDER BY (year, month, date_id);
 -- Деньги — Decimal, НЕ Float (иначе сверка с BI разъедется)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS fact_sales (
-    sale_id     Int32,
+    sale_id     Int64,
     date_id     Int32,
     store_id    Int32,
     product_id  Int32,

@@ -2,10 +2,10 @@
 З05. ELT: загрузка сырья в DuckDB + проверки качества.
 
 Порядок:
-  1. DDL из sql/ddl_duckdb.sql
-  2. DELETE FROM всех таблиц (идемпотентность)
+  1. Удаляем старый файл БД (обходит проблему FK в DuckDB DROP TABLE)
+  2. DDL из sql/ddl_duckdb.sql — создаём таблицы
   3. COPY: сначала справочники (dim_*), потом факт (fact_sales)
-  4. Проверки качества — при провале откат и exit 1
+  4. Проверки качества — при провале exit 1
 
 Запуск: py etl/load.py
 """
@@ -84,17 +84,16 @@ def run_checks(con: duckdb.DuckDBPyConnection) -> None:
     check(n == 0, f"fact_sales: сирот FK = {n}")
 
 
-def cleanup(con: duckdb.DuckDBPyConnection) -> None:
-    """Очистка таблиц — для идемпотентности и отката."""
-    for t in TABLES:
-        con.execute(f"DELETE FROM {t}")
+def apply_ddl(con: duckdb.DuckDBPyConnection) -> None:
+    """Создаёт таблицы из DDL-файла."""
+    con.execute(DDL.read_text(encoding="utf-8"))
 
 
 def load(con):
-    """Загрузка CSV: dim → fact. dim_product — через staging + трансформация в SCD2."""
+    """Загрузка CSV: dim → fact. dim_product — через staging + SCD2."""
     print("\n=== Загрузка ===")
 
-    # --- dim_store: SCD1, как было ---
+    # --- dim_store: SCD1 ---
     print("  dim_store...")
     con.execute(f"COPY dim_store FROM '{RAW / 'dim_store.csv'}' (HEADER, DELIMITER ',')")
 
@@ -120,11 +119,11 @@ def load(con):
         FROM stg_product
     """)
 
-    # --- dim_date: как было ---
+    # --- dim_date ---
     print("  dim_date...")
     con.execute(f"COPY dim_date FROM '{RAW / 'dim_date.csv'}' (HEADER, DELIMITER ',')")
 
-    # --- fact_sales: как было ---
+    # --- fact_sales ---
     print("  fact_sales...")
     con.execute(f"COPY fact_sales FROM '{RAW / 'fact_sales.csv'}' (HEADER, DELIMITER ',')")
 
@@ -141,33 +140,33 @@ def print_summary(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def main() -> None:
+    # Удаляем старый файл БД — обходит проблему FK в DuckDB при DROP TABLE
+    if DB.exists():
+        DB.unlink()
+        print(f"=== Удалён старый файл: {DB} ===")
+
     con = duckdb.connect(str(DB))
 
-    # 1. DDL — структура
-    print("=== DDL ===")
-    con.execute(DDL.read_text(encoding="utf-8"))
+    # Настройки для больших данных
+    con.execute("SET preserve_insertion_order = false;")
+
+    # 1. DDL — создаём таблицы с нуля
+    print("\n=== DDL ===")
+    apply_ddl(con)
     print("  ok")
 
-    # 2. Очистка перед загрузкой (идемпотентность)
-    print("\n=== Очистка таблиц ===")
-    cleanup(con)
-    for t in TABLES:
-        print(f"  cleaned {t}")
-
-    # 3. Загрузка (dim → fact)
+    # 2. Загрузка (dim → fact)
     load(con)
 
-    # 4. Проверки — при провале откат и exit
+    # 3. Проверки — при провале exit
     try:
         run_checks(con)
     except CheckFailed as e:
         print(f"\n❌ ЗАГРУЗКА ОСТАНОВЛЕНА: {e}")
-        print("Откатываю изменения (DELETE FROM всех таблиц)...")
-        cleanup(con)
         con.close()
         sys.exit(1)
 
-    # 5. Итог
+    # 4. Итог
     print_summary(con)
 
     con.close()

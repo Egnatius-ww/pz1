@@ -1,15 +1,11 @@
+=== Удалён старый файл: E:\olap\pz1\data\retail.duckdb ===
+
 === DDL ===
   ok
 
-=== Очистка таблиц ===
-  cleaned fact_sales
-  cleaned dim_store
-  cleaned dim_product
-  cleaned dim_date
-
 === Загрузка ===
   dim_store...
-  dim_product...
+  dim_product (staging → SCD2)...
   dim_date...
   fact_sales...
 
@@ -21,12 +17,12 @@
   ✓ fact_sales: сирот FK = 0
 
 === Counts ===
-  fact_sales: 15
-  dim_store: 5
-  dim_product: 8
-  dim_date: 8
+  fact_sales: 2000000
+  dim_store: 50
+  dim_product: 500
+  dim_date: 366
 
 === Sum(amount) ===
-  Оборот: 264.00
+  Оборот: 78220000.00
 
 ✓ Загрузка успешна → E:\olap\pz1\data\retail.duckdb

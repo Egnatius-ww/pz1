@@ -9,26 +9,26 @@
 
 === Загрузка ===
   loading dim_store...
-    5 rows
+    50 rows
   loading dim_product (SCD2)...
-    8 rows
+    500 rows
   loading dim_date...
-    8 rows
+    366 rows
   loading fact_sales...
-    15 rows
+    2000000 rows
 
 === Проверки ===
-  ✓ fact_sales: count = 15
+  ✓ fact_sales: count = 2000000
   ✓ fact_sales: отрицательных qty/amount = 0
   ✓ fact_sales: сирот FK = 0
 
 === Counts ===
-  dim_store: 5
-  dim_product: 8
-  dim_date: 8
-  fact_sales: 15
+  dim_store: 50
+  dim_product: 500
+  dim_date: 366
+  fact_sales: 2000000
 
 === Sum(amount) ===
-  Оборот: 264
+  Оборот: 78220000
 
 ✓ Загрузка в ClickHouse успешна

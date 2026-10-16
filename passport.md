@@ -17,7 +17,7 @@
 
 |    Имя     |                      Grain                   |    Примечание    |
 |------------|----------------------------------------------|------------------|
-| fact_sales | одна позиция в чеке (товар × магазин × дата) | sample: 15 строк |
+| fact_sales | одна позиция в чеке (товар × магазин × дата) | sample: 2000000 |
 
 
  4. Меры
@@ -32,9 +32,9 @@
 
 5. Измерения
 
-| Dim | Ключ | Важные атрибуты | SCD1 / SCD2 / нет |
-|-----|------|-----------------|-------------------|
-| dim_store   | store_id   | store_name, city, region                                                                        | SCD1 (затираем) |
+| Dim         | Ключ       | Важные атрибуты               | SCD1 / SCD2 / нет |
+|-----        |------      |-----------------              |-------------------|
+| dim_store   | store_id   | store_name, city, region       | SCD1 (затираем) |
 | dim_product | version_id (PK), product_id (business key) | product_name, category, brand, valid_from, valid_to, is_current | **SCD2** (реализовано) |
 | dim_date    | date_id    | full_date, year, month, month_name, day_of_week                                                 | нет (статичный) |
 
@@ -62,7 +62,8 @@
 SELECT SUM(amount) AS revenue
 FROM fact_sales;
 
-**Эталонное число:** 264.00
+**Эталонное число:** 78 220 000.00
+
 
 
 8. Риски / cut
@@ -88,10 +89,14 @@ erDiagram
         text region
     }
     dim_product {
-        int product_id PK
+        int version_id PK
+        int product_id "business key"
         text product_name
         text category
         text brand
+        date valid_from
+        date valid_to
+        bool is_current
     }
     dim_date {
         int date_id PK
@@ -105,7 +110,7 @@ erDiagram
         int sale_id PK
         int date_id FK
         int store_id FK
-        int product_id FK
+        int product_id "business key"
         int qty
         decimal amount
     }
