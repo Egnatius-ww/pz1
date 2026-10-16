@@ -58,7 +58,7 @@ ClickHouse + Metabase из папки `E:\olap\Стенд`:
 
 ```bash
 py -m pip install duckdb
-py scripts/load_duckdb.py
+py etl/load.py
 
 
 ELT: загрузка и проверки (З05)
