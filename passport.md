@@ -78,9 +78,16 @@ FROM fact_sales;
 
 ```mermaid
 erDiagram
-    dim_store   ||--o{ fact_sales : store_id
-    dim_product ||--o{ fact_sales : product_id
-    dim_date    ||--o{ fact_sales : date_id
+    dim_store   ||--o{ fact_sales    : store_id
+    dim_store   ||--o{ fact_supplies : store_id
+    dim_store   ||--o{ fact_disposals : store_id
+    dim_product ||--o{ fact_sales    : product_id
+    dim_product ||--o{ fact_supplies : product_id
+    dim_product ||--o{ fact_disposals : product_id
+    dim_date    ||--o{ fact_sales    : date_id
+    dim_date    ||--o{ fact_supplies : date_id
+    dim_date    ||--o{ fact_disposals : date_id
+    dim_reason  ||--o{ fact_disposals : reason_id
 
     dim_store {
         int store_id PK
@@ -106,6 +113,10 @@ erDiagram
         text month_name
         int day_of_week
     }
+    dim_reason {
+        int reason_id PK
+        text reason_name
+    }
     fact_sales {
         int sale_id PK
         int date_id FK
@@ -113,4 +124,21 @@ erDiagram
         int product_id "business key"
         int qty
         decimal amount
+    }
+    fact_supplies {
+        int supply_id PK
+        int date_id FK
+        int store_id FK
+        int product_id "business key"
+        int qty
+        decimal cost
+    }
+    fact_disposals {
+        int disposal_id PK
+        int date_id FK
+        int store_id FK
+        int product_id "business key"
+        int reason_id FK
+        int qty
+        decimal cost_loss
     }
