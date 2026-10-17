@@ -32,12 +32,15 @@
 
 5. Измерения
 
-| Dim         | Ключ       | Важные атрибуты               | SCD1 / SCD2 / нет |
-|-----        |------      |-----------------              |-------------------|
-| dim_store   | store_id   | store_name, city, region       | SCD1 (затираем) |
-| dim_product | version_id (PK), product_id (business key) | product_name, category, brand, valid_from, valid_to, is_current | **SCD2** (реализовано) |
-| dim_date    | date_id    | full_date, year, month, month_name, day_of_week                                                 | нет (статичный) |
+## 5. Измерения
 
+| Dim | Ключ | Важные атрибуты | SCD1 / SCD2 / нет |
+|---|---|---|---|
+| dim_store | store_id | store_name, city, region | SCD1 |
+| dim_product | version_id (PK), product_id (business key) | product_name, category, brand, valid_from, valid_to, is_current | **SCD2** (реализовано) |
+| dim_date | date_id | full_date, year, month, month_name, day_of_week | нет (статичный) |
+| dim_reason | reason_id | reason_name | нет (статичный) |
+| **dim_customer** | **customer_id** | **customer_name, city, loyalty_tier** | **SCD1** |
  SCD2 для dim_product
 
 Храним историю версий: при смене категории товара старая версия
@@ -55,6 +58,7 @@
 1. Какой оборот (SUM(amount)) по регионам за январь 2024?
 2. Топ-10 категорий товаров по обороту за весь период?
 3. Как меняется средний чек по магазинам месяц к месяцу?
+4. **Кто наши топ-10 клиентов по выручке за 2024 год?**
 
 
 7. Эталонный SQL одной метрики (черновик → уточнить на P04)
@@ -88,6 +92,7 @@ erDiagram
     dim_date    ||--o{ fact_supplies : date_id
     dim_date    ||--o{ fact_disposals : date_id
     dim_reason  ||--o{ fact_disposals : reason_id
+    dim_customer ||--o{ fact_sales : customer_id
 
     dim_store {
         int store_id PK
@@ -117,11 +122,18 @@ erDiagram
         int reason_id PK
         text reason_name
     }
+    dim_customer {
+        int customer_id PK
+        text customer_name
+        text city
+        text loyalty_tier
+    }
     fact_sales {
         int sale_id PK
         int date_id FK
         int store_id FK
         int product_id "business key"
+        int customer_id FK
         int qty
         decimal amount
     }
