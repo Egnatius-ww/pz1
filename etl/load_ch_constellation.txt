@@ -1,0 +1,52 @@
+
+=== DROP TABLE ===
+  dropped fact_sales
+  dropped fact_supplies
+  dropped fact_disposals
+  dropped dim_store
+  dropped dim_product
+  dropped dim_date
+  dropped dim_customer
+  dropped dim_reason
+=== DDL ===
+  ok
+
+=== Загрузка ===
+  loading dim_store...
+    50 rows
+  loading dim_product (SCD2)...
+    500 rows
+  loading dim_date...
+    366 rows
+  loading dim_customer...
+    500 rows
+  loading dim_reason...
+    5 rows
+  loading fact_sales...
+    2000000 rows
+  loading fact_supplies...
+    200000 rows
+  loading fact_disposals...
+    50000 rows
+
+=== Проверки ===
+  ✓ fact_sales: count = 2000000
+  ✓ fact_sales: отрицательных = 0
+  ✓ fact_disposals: отрицательных = 0
+
+=== Counts ===
+  fact_sales: 2,000,000
+  fact_supplies: 200,000
+  fact_disposals: 50,000
+  dim_store: 50
+  dim_product: 500
+  dim_date: 366
+  dim_customer: 500
+  dim_reason: 5
+
+=== Метрики ===
+  Оборот:   78220000
+  Поставки: 26790000
+  Потери:   1025000
+
+✓ Загрузка в ClickHouse успешна

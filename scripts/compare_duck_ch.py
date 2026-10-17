@@ -1,8 +1,5 @@
 """
-З07. Сверка DuckDB ↔ ClickHouse:
-- count(fact_sales)
-- sum(amount) — главная метрика
-
+З07. Сверка DuckDB ↔ ClickHouse: 3 факта + 2 измерения.
 Расхождение — сигнал, что загрузка потеряла или задвоила строки.
 """
 import duckdb
@@ -30,8 +27,21 @@ def main():
     print("=== DuckDB vs ClickHouse ===\n")
 
     checks = [
-        ("count(fact_sales)", "SELECT count() FROM fact_sales"),
-        ("sum(amount)",       "SELECT sum(amount) FROM fact_sales"),
+        # fact_sales
+        ("count(fact_sales)",             "SELECT count() FROM fact_sales"),
+        ("sum(fact_sales.amount)",         "SELECT sum(amount) FROM fact_sales"),
+        # fact_supplies
+        ("count(fact_supplies)",           "SELECT count() FROM fact_supplies"),
+        ("sum(fact_supplies.cost)",        "SELECT sum(cost) FROM fact_supplies"),
+        # fact_disposals
+        ("count(fact_disposals)",          "SELECT count() FROM fact_disposals"),
+        ("sum(fact_disposals.cost_loss)",  "SELECT sum(cost_loss) FROM fact_disposals"),
+        # dims
+        ("count(dim_store)",               "SELECT count() FROM dim_store"),
+        ("count(dim_product)",             "SELECT count() FROM dim_product"),
+        ("count(dim_date)",                "SELECT count() FROM dim_date"),
+        ("count(dim_customer)",            "SELECT count() FROM dim_customer"),
+        ("count(dim_reason)",              "SELECT count() FROM dim_reason"),
     ]
 
     all_ok = True
@@ -39,7 +49,7 @@ def main():
         d = duck.execute(query).fetchone()[0]
         c = ch.command(query)
 
-        # приводим к одному типу для сравнения (Decimal vs float)
+        # нормализация Decimal / float для сравнения
         d_str = str(d).rstrip("0").rstrip(".") if "." in str(d) else str(d)
         c_str = str(c).rstrip("0").rstrip(".") if "." in str(c) else str(c)
 

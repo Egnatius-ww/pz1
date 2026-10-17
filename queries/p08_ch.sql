@@ -1,8 +1,8 @@
--- З08. Те же 5 запросов из P04, но для ClickHouse.
--- Отличия от DuckDB: GROUPING SETS → WITH ROLLUP; функции строчными.
+-- З08. 9 запросов из P04, адаптированных под ClickHouse.
+-- Отличия: GROUPING SETS → WITH ROLLUP; функции строчными.
 
 -- ============================================================
--- 1. SLICE: оборот за период (январь 2024)
+-- 1. SLICE
 -- ============================================================
 SELECT
     dd.year,
@@ -15,9 +15,7 @@ GROUP BY dd.year, dd.month;
 
 
 -- ============================================================
--- 2. ROLL-UP: оборот по месяцам и по годам
--- В CH GROUPING SETS неудобен → WITH ROLLUP даёт то же:
--- (year, month), (year), ()
+-- 2. ROLL-UP
 -- ============================================================
 SELECT
     dd.year,
@@ -30,7 +28,7 @@ ORDER BY dd.year ASC NULLS LAST, dd.month ASC NULLS LAST;
 
 
 -- ============================================================
--- 3. DICE: оборот по региону + категории
+-- 3. DICE
 -- ============================================================
 SELECT
     ds.region,
@@ -44,7 +42,7 @@ ORDER BY ds.region, revenue DESC;
 
 
 -- ============================================================
--- 4. ОКНО: доля категории в обороте + место в рейтинге
+-- 4. ОКНО
 -- ============================================================
 WITH cat_rev AS (
     SELECT
@@ -64,7 +62,7 @@ ORDER BY rank;
 
 
 -- ============================================================
--- 5. ТОП-N: топ-3 магазина по обороту
+-- 5. ТОП-N
 -- ============================================================
 SELECT
     ds.store_name,
@@ -78,7 +76,58 @@ LIMIT 3;
 
 
 -- ============================================================
--- 6. ЭТАЛОН: главная метрика (sum amount)
+-- 6. SHRINKAGE
 -- ============================================================
-SELECT sum(amount) AS revenue
-FROM fact_sales;
+WITH supplies AS (
+    SELECT dp.category, sum(s.cost) AS supply_cost
+    FROM fact_supplies s
+    JOIN dim_product dp ON s.product_id = dp.product_id
+    GROUP BY dp.category
+),
+disposals AS (
+    SELECT dp.category, sum(d.cost_loss) AS disposal_cost
+    FROM fact_disposals d
+    JOIN dim_product dp ON d.product_id = dp.product_id
+    GROUP BY dp.category
+)
+SELECT
+    s.category,
+    s.supply_cost,
+    d.disposal_cost,
+    round(d.disposal_cost * 100.0 / s.supply_cost, 2) AS shrinkage_pct
+FROM supplies s
+LEFT JOIN disposals d ON s.category = d.category
+ORDER BY shrinkage_pct DESC;
+
+
+-- ============================================================
+-- 7. ТОП ПРИЧИН СПИСАНИЙ
+-- ============================================================
+SELECT
+    r.reason_name,
+    sum(d.cost_loss) AS total_loss,
+    count() AS disposal_count
+FROM fact_disposals d
+JOIN dim_reason r ON d.reason_id = r.reason_id
+GROUP BY r.reason_name
+ORDER BY total_loss DESC;
+
+
+-- ============================================================
+-- 8. ТОП-10 КЛИЕНТОВ
+-- ============================================================
+SELECT
+    c.customer_name,
+    c.loyalty_tier,
+    sum(s.amount) AS revenue
+FROM fact_sales s
+JOIN dim_customer c ON s.customer_id = c.customer_id
+GROUP BY c.customer_name, c.loyalty_tier
+ORDER BY revenue DESC
+LIMIT 10;
+
+
+-- ============================================================
+-- 9. ЭТАЛОН
+-- ============================================================
+SELECT sum(amount) AS revenue FROM fact_sales;

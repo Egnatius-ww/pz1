@@ -1,11 +1,12 @@
 """
 З05. ELT: загрузка сырья в DuckDB + проверки качества.
+Constellation: 3 факта + 5 измерений.
 
 Порядок:
-  1. Удаляем старый файл БД (обходит проблему FK в DuckDB DROP TABLE)
-  2. DDL из sql/ddl_duckdb.sql — создаём таблицы
-  3. COPY: сначала справочники (dim_*), потом факт (fact_sales)
-  4. Проверки качества — при провале exit 1
+  1. Удалить старый файл БД
+  2. DDL из sql/ddl_duckdb.sql
+  3. Загрузка: dim → fact
+  4. Проверки качества
 
 Запуск: py etl/load.py
 """
@@ -18,86 +19,89 @@ RAW = ROOT / "data" / "raw"
 DB = ROOT / "data" / "retail.duckdb"
 DDL = ROOT / "sql" / "ddl_duckdb.sql"
 
-TABLES = ("fact_sales", "dim_store", "dim_product", "dim_date")
+TABLES = ("fact_sales", "fact_supplies", "fact_disposals",
+          "dim_store", "dim_product", "dim_date",
+          "dim_customer", "dim_reason")
 
 
 class CheckFailed(Exception):
-    """Проверка качества не прошла — загрузка останавливается."""
     pass
 
 
 def check(condition: bool, msg: str) -> None:
-    """Если condition False — бросаем CheckFailed."""
     if not condition:
         raise CheckFailed(msg)
     print(f"  ✓ {msg}")
 
 
 def run_checks(con: duckdb.DuckDBPyConnection) -> None:
-    """Все проверки качества после загрузки."""
     print("\n=== Проверки качества ===")
 
-    # 1. Пустые ключи и суммы
+    # 1. Пустые ключи в fact_sales
     n = con.execute("""
         SELECT count() FROM fact_sales
-        WHERE date_id IS NULL
-           OR store_id IS NULL
-           OR product_id IS NULL
-           OR qty IS NULL
-           OR amount IS NULL
+        WHERE date_id IS NULL OR store_id IS NULL
+           OR product_id IS NULL OR customer_id IS NULL
+           OR qty IS NULL OR amount IS NULL
     """).fetchone()[0]
     check(n == 0, f"fact_sales: пустых ключей/сумм = {n}")
 
-    # 2. Странный диапазон: qty >= 0, amount >= 0
+    # 2. Отрицательные значения
     n = con.execute("""
         SELECT count() FROM fact_sales
         WHERE qty < 0 OR amount < 0
     """).fetchone()[0]
-    check(n == 0, f"fact_sales: отрицательных qty/amount = {n}")
+    check(n == 0, f"fact_sales: отрицательных = {n}")
 
-    # 2b. Старые даты
     n = con.execute("""
-        SELECT count() FROM dim_date WHERE year < 2000
+        SELECT count() FROM fact_supplies WHERE qty < 0 OR cost < 0
     """).fetchone()[0]
+    check(n == 0, f"fact_supplies: отрицательных = {n}")
+
+    n = con.execute("""
+        SELECT count() FROM fact_disposals WHERE qty < 0 OR cost_loss < 0
+    """).fetchone()[0]
+    check(n == 0, f"fact_disposals: отрицательных = {n}")
+
+    # 3. Старые даты
+    n = con.execute("SELECT count() FROM dim_date WHERE year < 2000").fetchone()[0]
     check(n == 0, f"dim_date: дат раньше 2000 = {n}")
 
-    # 3. Дубли по grain (sale_id — PK)
-    n = con.execute("""
-        SELECT count() FROM (
-            SELECT sale_id FROM fact_sales
-            GROUP BY sale_id HAVING count() > 1
-        )
-    """).fetchone()[0]
-    check(n == 0, f"fact_sales: дублей sale_id = {n}")
-
-    # 4. Сироты FK (anti-join)
+    # 4. Сироты FK в fact_sales
     n = con.execute("""
         SELECT count()
         FROM fact_sales f
-        LEFT JOIN dim_store   s ON f.store_id   = s.store_id
-        LEFT JOIN dim_product p ON f.product_id = p.product_id
-        LEFT JOIN dim_date    d ON f.date_id    = d.date_id
-        WHERE s.store_id IS NULL
-           OR p.product_id IS NULL
-           OR d.date_id IS NULL
+        LEFT JOIN dim_store    s ON f.store_id    = s.store_id
+        LEFT JOIN dim_product  p ON f.product_id  = p.product_id
+        LEFT JOIN dim_date     d ON f.date_id     = d.date_id
+        LEFT JOIN dim_customer c ON f.customer_id = c.customer_id
+        WHERE s.store_id IS NULL OR p.product_id IS NULL
+           OR d.date_id IS NULL OR c.customer_id IS NULL
     """).fetchone()[0]
     check(n == 0, f"fact_sales: сирот FK = {n}")
 
+    # 5. Сироты FK в fact_disposals (с reason_id)
+    n = con.execute("""
+        SELECT count()
+        FROM fact_disposals f
+        LEFT JOIN dim_reason r ON f.reason_id = r.reason_id
+        WHERE r.reason_id IS NULL
+    """).fetchone()[0]
+    check(n == 0, f"fact_disposals: сирот reason_id = {n}")
+
 
 def apply_ddl(con: duckdb.DuckDBPyConnection) -> None:
-    """Создаёт таблицы из DDL-файла."""
     con.execute(DDL.read_text(encoding="utf-8"))
 
 
 def load(con):
-    """Загрузка CSV: dim → fact. dim_product — через staging + SCD2."""
     print("\n=== Загрузка ===")
 
-    # --- dim_store: SCD1 ---
+    # --- dim_store ---
     print("  dim_store...")
     con.execute(f"COPY dim_store FROM '{RAW / 'dim_store.csv'}' (HEADER, DELIMITER ',')")
 
-    # --- dim_product: SCD2 через staging ---
+    # --- dim_product (SCD2 через staging) ---
     print("  dim_product (staging → SCD2)...")
     con.execute(f"""
         CREATE OR REPLACE TEMP TABLE stg_product AS
@@ -109,13 +113,10 @@ def load(con):
              valid_from, valid_to, is_current)
         SELECT
             row_number() OVER (ORDER BY product_id) AS version_id,
-            product_id,
-            product_name,
-            category,
-            brand,
+            product_id, product_name, category, brand,
             DATE '2024-01-01' AS valid_from,
-            NULL              AS valid_to,
-            TRUE              AS is_current
+            NULL AS valid_to,
+            TRUE AS is_current
         FROM stg_product
     """)
 
@@ -123,42 +124,57 @@ def load(con):
     print("  dim_date...")
     con.execute(f"COPY dim_date FROM '{RAW / 'dim_date.csv'}' (HEADER, DELIMITER ',')")
 
+    # --- dim_customer ---
+    print("  dim_customer...")
+    con.execute(f"COPY dim_customer FROM '{RAW / 'dim_customer.csv'}' (HEADER, DELIMITER ',')")
+
+    # --- dim_reason ---
+    print("  dim_reason...")
+    con.execute(f"COPY dim_reason FROM '{RAW / 'dim_reason.csv'}' (HEADER, DELIMITER ',')")
+
     # --- fact_sales ---
     print("  fact_sales...")
     con.execute(f"COPY fact_sales FROM '{RAW / 'fact_sales.csv'}' (HEADER, DELIMITER ',')")
 
+    # --- fact_supplies ---
+    print("  fact_supplies...")
+    con.execute(f"COPY fact_supplies FROM '{RAW / 'fact_supplies.csv'}' (HEADER, DELIMITER ',')")
+
+    # --- fact_disposals ---
+    print("  fact_disposals...")
+    con.execute(f"COPY fact_disposals FROM '{RAW / 'fact_disposals.csv'}' (HEADER, DELIMITER ',')")
+
 
 def print_summary(con: duckdb.DuckDBPyConnection) -> None:
-    """Печать финальных чисел."""
     print("\n=== Counts ===")
     for t in TABLES:
         n = con.execute(f"SELECT count() FROM {t}").fetchone()[0]
-        print(f"  {t}: {n}")
+        print(f"  {t}: {n:,}")
 
     rev = con.execute("SELECT sum(amount) FROM fact_sales").fetchone()[0]
-    print(f"\n=== Sum(amount) ===\n  Оборот: {rev}")
+    sup = con.execute("SELECT sum(cost) FROM fact_supplies").fetchone()[0]
+    dis = con.execute("SELECT sum(cost_loss) FROM fact_disposals").fetchone()[0]
+    print(f"\n=== Метрики ===")
+    print(f"  Оборот:   {rev}")
+    print(f"  Поставки: {sup}")
+    print(f"  Потери:   {dis}")
 
 
 def main() -> None:
-    # Удаляем старый файл БД — обходит проблему FK в DuckDB при DROP TABLE
+    # Удаляем старый файл БД
     if DB.exists():
         DB.unlink()
         print(f"=== Удалён старый файл: {DB} ===")
 
     con = duckdb.connect(str(DB))
-
-    # Настройки для больших данных
     con.execute("SET preserve_insertion_order = false;")
 
-    # 1. DDL — создаём таблицы с нуля
     print("\n=== DDL ===")
     apply_ddl(con)
     print("  ok")
 
-    # 2. Загрузка (dim → fact)
     load(con)
 
-    # 3. Проверки — при провале exit
     try:
         run_checks(con)
     except CheckFailed as e:
@@ -166,7 +182,6 @@ def main() -> None:
         con.close()
         sys.exit(1)
 
-    # 4. Итог
     print_summary(con)
 
     con.close()

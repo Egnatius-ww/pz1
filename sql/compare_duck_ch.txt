@@ -1,13 +1,58 @@
 === DuckDB vs ClickHouse ===
 
 count(fact_sales)
-  DuckDB:     15
-  ClickHouse: 15
+  DuckDB:     2000000
+  ClickHouse: 2000000
   ✓
 
-sum(amount)
-  DuckDB:     264.00
-  ClickHouse: 264
+sum(fact_sales.amount)
+  DuckDB:     78220000.00
+  ClickHouse: 78220000
+  ✓
+
+count(fact_supplies)
+  DuckDB:     200000
+  ClickHouse: 200000
+  ✓
+
+sum(fact_supplies.cost)
+  DuckDB:     26790000.00
+  ClickHouse: 26790000
+  ✓
+
+count(fact_disposals)
+  DuckDB:     50000
+  ClickHouse: 50000
+  ✓
+
+sum(fact_disposals.cost_loss)
+  DuckDB:     1025000.00
+  ClickHouse: 1025000
+  ✓
+
+count(dim_store)
+  DuckDB:     50
+  ClickHouse: 50
+  ✓
+
+count(dim_product)
+  DuckDB:     500
+  ClickHouse: 500
+  ✓
+
+count(dim_date)
+  DuckDB:     366
+  ClickHouse: 366
+  ✓
+
+count(dim_customer)
+  DuckDB:     500
+  ClickHouse: 500
+  ✓
+
+count(dim_reason)
+  DuckDB:     5
+  ClickHouse: 5
   ✓
 
 ✓ Все проверки пройдены — числа совпадают

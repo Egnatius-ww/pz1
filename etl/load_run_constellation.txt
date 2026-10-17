@@ -1,0 +1,40 @@
+=== Удалён старый файл: E:\olap\pz1\data\retail.duckdb ===
+
+=== DDL ===
+  ok
+
+=== Загрузка ===
+  dim_store...
+  dim_product (staging → SCD2)...
+  dim_date...
+  dim_customer...
+  dim_reason...
+  fact_sales...
+  fact_supplies...
+  fact_disposals...
+
+=== Проверки качества ===
+  ✓ fact_sales: пустых ключей/сумм = 0
+  ✓ fact_sales: отрицательных = 0
+  ✓ fact_supplies: отрицательных = 0
+  ✓ fact_disposals: отрицательных = 0
+  ✓ dim_date: дат раньше 2000 = 0
+  ✓ fact_sales: сирот FK = 0
+  ✓ fact_disposals: сирот reason_id = 0
+
+=== Counts ===
+  fact_sales: 2,000,000
+  fact_supplies: 200,000
+  fact_disposals: 50,000
+  dim_store: 50
+  dim_product: 500
+  dim_date: 366
+  dim_customer: 500
+  dim_reason: 5
+
+=== Метрики ===
+  Оборот:   78220000.00
+  Поставки: 26790000.00
+  Потери:   1025000.00
+
+✓ Загрузка успешна → E:\olap\pz1\data\retail.duckdb
