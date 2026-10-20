@@ -19,8 +19,10 @@ CH_USER = "default"
 CH_PASSWORD = ""
 CH_DATABASE = "retail_dw"
 
-# Порядок удаления: сначала факты (у них FK), потом dims
+#порядок удаления
 TABLES = (
+    "mv_daily_store",          # ← MV первым
+    "daily_store_revenue",     # ← target после MV
     "fact_sales", "fact_supplies", "fact_disposals",
     "dim_store", "dim_product", "dim_date", "dim_customer", "dim_reason",
 )

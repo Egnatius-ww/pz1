@@ -1,5 +1,7 @@
 
 === DROP TABLE ===
+  dropped mv_daily_store
+  dropped daily_store_revenue
   dropped fact_sales
   dropped fact_supplies
   dropped fact_disposals
@@ -35,6 +37,8 @@
   ✓ fact_disposals: отрицательных = 0
 
 === Counts ===
+  mv_daily_store: 3,650
+  daily_store_revenue: 3,650
   fact_sales: 2,000,000
   fact_supplies: 200,000
   fact_disposals: 50,000
